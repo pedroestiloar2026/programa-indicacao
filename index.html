@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Programa de Indicação — Painel</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --bg:#ffffff;--panel:#fafafa;--line:#e4e4e4;--line-strong:#d0d0d0;
+    --ink:#111111;--ink-2:#4a4a4a;--ink-3:#8a8a8a;--ink-4:#adadad;
+    --green:#1f8a4c;--blue:#1a56c4;--radius:6px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1750px;margin:0 auto;padding:32px 24px 64px}
+  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:20px;
+    display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  h1{font-size:20px;font-weight:600;letter-spacing:-.2px}
+  .session-box{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink-2)}
+  .badge{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em}
+  .badge.vendedor{background:#eee;color:var(--ink-2)}
+  .badge.gestora{background:#e7f0ff;color:var(--blue)}
+  button{font-family:inherit;font-size:12px;cursor:pointer;background:#fff;color:var(--ink);
+    border:1px solid var(--line-strong);border-radius:4px;padding:7px 14px}
+  button:hover{background:#f0f0f0}
+  .btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .btn-primary:hover{background:#000}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:20px}
+  .kpi{border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;background:var(--panel)}
+  .kpi .k{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+  .kpi .v{font-size:22px;font-weight:600;margin-top:6px;letter-spacing:-.4px}
+  .filters{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:14px;background:var(--panel);padding:14px 16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label{font-size:11px;color:var(--ink-3)}
+  input[type=text],input[type=date],input[type=email],input[type=password],select,textarea{
+    font-family:inherit;font-size:12px;color:var(--ink);background:#fff;
+    border:1px solid var(--line-strong);border-radius:4px;padding:7px 9px;width:100%}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 2px rgba(17,17,17,.07)}
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .count{font-size:12px;color:var(--ink-2)}
+  .count b{font-weight:600;color:var(--ink)}
+  .table-scroll{border:1px solid var(--line);border-radius:var(--radius);overflow:auto;max-height:70vh}
+  table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px;white-space:nowrap}
+  thead th{position:sticky;top:0;z-index:2;background:#f2f2f2;color:var(--ink);text-align:left;
+    font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+    padding:10px 12px;border-bottom:1px solid var(--line-strong);cursor:pointer;user-select:none}
+  thead th.ed{background:#fbfbfb}
+  thead th.ed::before{content:"✎ ";font-size:9px;color:var(--ink-4)}
+  tbody td{padding:8px 12px;border-bottom:1px solid var(--line);color:var(--ink-2);vertical-align:top;position:relative}
+  tbody tr:nth-child(even){background:#fcfcfc}
+  tbody tr:hover{background:#f4f4f4}
+  td.name{color:var(--ink);font-weight:500}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.obs{white-space:normal;min-width:220px;max-width:280px;font-size:11.5px;color:var(--ink-3)}
+  tbody td:not(.editable){background:#f1f1f1}
+  tbody tr:nth-child(even) td:not(.editable){background:#ededed}
+  td.editable{cursor:pointer;background:#fff}
+  td.editable:hover{background:#f6f6f6}
+  td.locked{cursor:not-allowed;opacity:.55}
+  .bar-yes{display:inline-block;width:44px;height:8px;border-radius:99px;background:var(--green);vertical-align:middle}
+  .blank{color:#c8c8c8}
+  td.audit{color:var(--ink-4);font-size:11px;min-width:150px;border-left:1px solid var(--line);cursor:pointer;vertical-align:middle}
+  td.audit:hover{color:var(--ink-3);text-decoration:underline}
+  .cstamp{display:block;margin-top:4px;font-size:9.5px;color:var(--ink-4)}
+  .pop-back{position:fixed;inset:0;z-index:55;display:none;background:rgba(17,17,17,.06)}
+  .pop-back.on{display:block}
+  .pop{position:fixed;z-index:60;width:300px;display:none;background:#fff;border:1px solid var(--ink);
+    border-radius:var(--radius);box-shadow:0 12px 34px rgba(0,0,0,.17);padding:14px}
+  .pop.on{display:block}
+  .pop h3{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em}
+  .pop .grp{margin-top:12px}
+  .pop .lbl{display:block;font-size:11px;color:var(--ink-3);margin-bottom:5px}
+  .pop .req{color:#a3271c}
+  .pop textarea{min-height:70px;resize:vertical}
+  .seg{display:flex;gap:6px}
+  .seg button{flex:1;padding:8px 0}
+  .seg button.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .seg button.sel.yes{background:var(--green);border-color:var(--green)}
+  .pop-actions{display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+  .err{font-size:10.5px;color:#a3271c;margin-top:5px;display:none}
+  .err.on{display:block}
+  .overlay{position:fixed;inset:0;background:rgba(17,17,17,.35);display:none;align-items:center;justify-content:center;padding:24px;z-index:70}
+  .overlay.on{display:flex}
+  .modal{background:#fff;border-radius:var(--radius);border:1px solid var(--line-strong);width:100%;max-width:520px;
+    max-height:80vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.18)}
+  .modal-h{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  .modal-h .mt{font-size:13px;font-weight:600}
+  .modal-b{padding:14px 18px;overflow:auto}
+  .modal-x{border:none;background:none;font-size:18px;color:var(--ink-3);padding:0 4px}
+  .act{padding:8px 0;border-bottom:1px dashed #efefef;font-size:11.5px}
+  .act:last-child{border-bottom:none}
+  .act .a-when{color:var(--ink-4)}
+  .act .a-who{color:var(--ink-2);font-weight:500;margin:0 6px}
+  .empty{padding:40px;text-align:center;color:var(--ink-3);font-size:12px}
+  .loading{padding:40px;text-align:center;color:var(--ink-3);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Programa de Indicação</h1></div>
+    <div class="session-box" id="session-box"></div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="filters">
+    <div class="grid">
+      <div class="field">
+        <label for="f-busca">Busca geral</label>
+        <input type="text" id="f-busca" placeholder="Nome, telefone, e-mail…">
+      </div>
+      <div class="field">
+        <label for="f-vendedor">Vendedor</label>
+        <select id="f-vendedor"><option value="">Todos</option></select>
+      </div>
+      <div class="field">
+        <label for="f-venda">Gerou venda?</label>
+        <select id="f-venda"><option value="">Todos</option><option value="sim">Sim</option><option value="nao">Não</option></select>
+      </div>
+      <div class="field">
+        <label for="f-recompensa">Recompensa liberada?</label>
+        <select id="f-recompensa"><option value="">Todos</option><option value="sim">Sim</option><option value="nao">Não</option></select>
+      </div>
+    </div>
+  </section>
+
+  <div class="bar">
+    <div class="count" id="count"></div>
+    <button type="button" id="refresh">↻ Atualizar</button>
+  </div>
+
+  <div class="table-scroll">
+    <table id="tbl">
+      <thead><tr id="thead-row"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="loading" id="loading">Carregando indicações…</div>
+    <div class="empty" id="empty" style="display:none">Nenhum registro encontrado.</div>
+  </div>
+</div>
+
+<div class="pop-back" id="pop-back"></div>
+<div class="pop" id="pop"></div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-h">
+      <div><div class="mt" id="modal-title">Histórico</div></div>
+      <button class="modal-x" id="modal-x" type="button">×</button>
+    </div>
+    <div class="modal-b" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="overlay" id="login-overlay">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-h">
+      <div class="mt">Login de gestora</div>
+      <button class="modal-x" id="login-x" type="button">×</button>
+    </div>
+    <div class="modal-b">
+      <div class="field" style="margin-bottom:10px">
+        <label>E-mail</label>
+        <input type="email" id="login-email">
+      </div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Senha</label>
+        <input type="password" id="login-senha">
+      </div>
+      <div class="err" id="login-err">E-mail ou senha incorretos.</div>
+      <div class="pop-actions" style="border:none;padding-top:14px">
+        <button type="button" class="btn-primary" id="login-entrar">Entrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   CONFIGURAÇÃO DO SUPABASE
+   ========================================================= */
+const SUPABASE_URL = 'https://bbmglwzlwqpeykhpishs.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_KyY7nG5U4UFcUeLcTMrBFg_W24S0XIL';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const $ = id => document.getElementById(id);
+const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const dt = s => s ? s.slice(8,10)+"/"+s.slice(5,7)+"/"+s.slice(0,4) : "";
+const brl = v => Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL",minimumFractionDigits:2});
+const norm = s => (s||"").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+
+/* =========================================================
+   COLUNAS — editRole: null (bloqueado) · 'vendedor' (livre) · 'gestora' (só logada)
+   ========================================================= */
+const COLS = [
+  {key:"data_indicacao",        label:"Data de indicação",        type:"date"},
+  {key:"nome_cliente_indicado", label:"Cliente indicador",        type:"text", cls:"name"},
+  {key:"telefone",              label:"Telefone",                 type:"text"},
+  {key:"email",                 label:"E-mail",                   type:"text"},
+  {key:"nome_indicacao",        label:"Nome da indicação",        type:"text"},
+  {key:"telefone_indicacao",    label:"Telefone da indicação",    type:"text"},
+  {key:"vendedor",              label:"Vendedor",                 type:"text"},
+  {key:"gerou_venda",           label:"Gerou venda?",             type:"bool",  editRole:"vendedor"},
+  {key:"faturamento_gerado",    label:"Faturamento gerado",       type:"money", editRole:"vendedor", cls:"num"},
+  {key:"recompensa_liberada",   label:"Recompensa liberada?",     type:"bool",  editRole:"gestora"},
+  {key:"contato_realizado",     label:"Contato realizado?",       type:"bool",  editRole:"gestora"},
+  {key:"data_resgate",          label:"Data do resgate",          type:"date",  editRole:"gestora"},
+  {key:"observacao",            label:"Observação",               type:"textarea", editRole:"gestora", cls:"obs"},
+  {key:"semestre",              label:"Semestre",                 type:"text",  editRole:"gestora"},
+  {key:"apuracao",              label:"Apuração",                 type:"date",  editRole:"gestora"}
+];
+const COL = Object.fromEntries(COLS.map(c => [c.key, c]));
+
+let linhas = [];
+let sessao = null; // { user, papel, nome }
+
+/* =========================================================
+   SESSÃO / LOGIN
+   ========================================================= */
+function isGestora(){ return !!(sessao && sessao.papel === 'gestora'); }
+
+function podeEditar(col){
+  if (!col.editRole) return false;
+  if (col.editRole === 'vendedor') return true;
+  return isGestora();
+}
+
+async function atualizarSessionBox(){
+  const box = $("session-box");
+  if (isGestora()){
+    box.innerHTML = `<span class="badge gestora">Gestora · ${esc(sessao.nome)}</span>
+      <button type="button" id="btn-logout">Sair</button>`;
+    $("btn-logout").onclick = async () => { await sb.auth.signOut(); sessao = null; await atualizarSessionBox(); render(); };
+  } else {
+    box.innerHTML = `<span class="badge vendedor">Acesso vendedor</span>
+      <button type="button" id="btn-login">Login de gestora</button>`;
+    $("btn-login").onclick = () => $("login-overlay").classList.add("on");
+  }
+}
+
+async function carregarSessao(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session){ sessao = null; return; }
+  const { data: perfil } = await sb.from('perfis').select('nome,papel').eq('id', session.user.id).single();
+  sessao = perfil ? { user: session.user, papel: perfil.papel, nome: perfil.nome } : null;
+}
+
+$("login-entrar").onclick = async () => {
+  const email = $("login-email").value.trim();
+  const senha = $("login-senha").value;
+  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+  if (error){ $("login-err").classList.add("on"); return; }
+  $("login-err").classList.remove("on");
+  $("login-overlay").classList.remove("on");
+  $("login-email").value = ""; $("login-senha").value = "";
+  await carregarSessao();
+  await atualizarSessionBox();
+  render();
+};
+$("login-x").onclick = () => $("login-overlay").classList.remove("on");
+
+/* =========================================================
+   CARREGAR DADOS
+   ========================================================= */
+async function carregarDados(){
+  $("loading").style.display = "block";
+  const { data, error } = await sb.from('indicacoes').select('*').order('data_indicacao', { ascending: false });
+  $("loading").style.display = "none";
+  if (error){ console.error(error); return; }
+  linhas = data || [];
+  popularVendedores();
+  render();
+}
+
+function popularVendedores(){
+  const sel = $("f-vendedor");
+  const atual = sel.value;
+  const nomes = [...new Set(linhas.map(d => d.vendedor).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Todos</option>' + nomes.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  if (nomes.includes(atual)) sel.value = atual;
+}
+
+/* =========================================================
+   FILTROS
+   ========================================================= */
+function filtrar(){
+  const busca = norm($("f-busca").value.trim());
+  const vendedor = $("f-vendedor").value;
+  const venda = $("f-venda").value;
+  const recompensa = $("f-recompensa").value;
+
+  return linhas.filter(d => {
+    if (busca){
+      const blob = norm([d.nome_cliente_indicado,d.telefone,d.email,d.nome_indicacao,d.vendedor].join(" | "));
+      if (!blob.includes(busca)) return false;
+    }
+    if (vendedor && d.vendedor !== vendedor) return false;
+    if (venda && (venda === "sim") !== !!d.gerou_venda) return false;
+    if (recompensa && (recompensa === "sim") !== !!d.recompensa_liberada) return false;
+    return true;
+  });
+}
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+function valorHTML(d, c){
+  const v = d[c.key];
+  if (c.type === "bool")  return v ? '<span class="bar-yes" title="Sim"></span>' : '<span class="blank">—</span>';
+  if (c.type === "money") return (v || v === 0) ? brl(v) : '<span class="blank">—</span>';
+  if (c.type === "date")  return v ? dt(v) : '<span class="blank">—</span>';
+  return v ? esc(v) : '<span class="blank">—</span>';
+}
+
+function render(){
+  $("thead-row").innerHTML =
+    COLS.map(c => `<th class="${c.editRole?"ed":""}">${c.label}</th>`).join("") +
+    `<th>Histórico</th>`;
+
+  const rows = filtrar();
+
+  $("tbody").innerHTML = rows.map(d => {
+    const tds = COLS.map(c => {
+      const editavel = podeEditar(c);
+      const cls = [c.cls||"", editavel ? "editable" : (c.editRole ? "locked" : ""), (c.type==="bool"?"mid":"")].filter(Boolean).join(" ");
+      return `<td class="${cls}" data-id="${d.id}" data-key="${c.key}">${valorHTML(d,c)}
+        ${d.ultimo_editor_nome && c.editRole ? `<span class="cstamp">${esc(d.ultimo_editor_nome)}</span>` : ""}</td>`;
+    }).join("");
+    return `<tr>${tds}<td class="audit" data-hist="${d.id}">ver histórico</td></tr>`;
+  }).join("");
+
+  $("empty").style.display = rows.length ? "none" : "block";
+
+  const fatTotal = rows.reduce((s,d) => s + (Number(d.faturamento_gerado)||0), 0);
+  const vendas = rows.filter(d => d.gerou_venda).length;
+  const recs = rows.filter(d => d.recompensa_liberada).length;
+
+  $("count").innerHTML = `<b>${rows.length}</b> ${rows.length===1?"indicação":"indicações"}`;
+  $("kpis").innerHTML = [
+    ["Indicações", rows.length],
+    ["Vendas geradas", vendas],
+    ["Faturamento gerado", brl(fatTotal)],
+    ["Recompensas liberadas", recs],
+    ["Taxa de conversão", (rows.length ? (vendas/rows.length*100).toFixed(1) : "0.0")+"%"]
+  ].map(([k,v]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+}
+
+/* =========================================================
+   EDIÇÃO
+   ========================================================= */
+const pop = $("pop"), popBack = $("pop-back");
+let ctx = null;
+
+function fecharPop(){ pop.classList.remove("on"); popBack.classList.remove("on"); pop.innerHTML=""; ctx=null; }
+
+function abrirPop(td, d, c){
+  fecharPop();
+  ctx = { d, c, boolVal: null };
+  let controle;
+  if (c.type === "bool"){
+    controle = `<div class="seg" id="p-seg"><button type="button" data-v="1">Sim</button><button type="button" data-v="0">Não</button></div>`;
+  } else if (c.type === "money"){
+    controle = '<input type="text" id="p-val" placeholder="0,00" inputmode="numeric">';
+  } else if (c.type === "date"){
+    controle = '<input type="date" id="p-val">';
+  } else {
+    controle = '<textarea id="p-val" placeholder="Escreva…"></textarea>';
+  }
+  pop.innerHTML = `
+    <h3>${esc(c.label)}</h3>
+    <div class="grp"><label class="lbl">Novo valor <span class="req">*</span></label>${controle}<div class="err" id="p-err-val"></div></div>
+    <div class="grp"><label class="lbl">Seu nome <span class="req">*</span></label>
+      <input type="text" id="p-nome" placeholder="Quem está editando"><div class="err" id="p-err">Informe seu nome.</div></div>
+    <div class="pop-actions"><button type="button" id="p-cancel">Cancelar</button><button type="button" id="p-save" class="btn-primary">Salvar</button></div>`;
+  popBack.classList.add("on"); pop.classList.add("on");
+  const r = td.getBoundingClientRect();
+  pop.style.left = Math.min(r.left, window.innerWidth-312) + "px";
+  pop.style.top = (r.bottom+6) + "px";
+}
+
+async function salvar(){
+  if (!ctx) return;
+  const { d, c } = ctx;
+  let novo;
+  if (c.type === "bool"){
+    if (ctx.boolVal === null){ $("p-err-val").textContent="Escolha Sim ou Não."; $("p-err-val").classList.add("on"); return; }
+    novo = ctx.boolVal;
+  } else if (c.type === "money"){
+    const n = parseFloat($("p-val").value.replace(/\./g,"").replace(",", "."));
+    if (isNaN(n)){ $("p-err-val").textContent="Informe o valor."; $("p-err-val").classList.add("on"); return; }
+    novo = n;
+  } else {
+    novo = $("p-val").value.trim();
+    if (!novo){ $("p-err-val").textContent="Preencha este campo."; $("p-err-val").classList.add("on"); return; }
+  }
+  const nome = $("p-nome").value.trim();
+  if (!nome){ $("p-err").classList.add("on"); return; }
+
+  const { error } = await sb.from('indicacoes')
+    .update({ [c.key]: novo, ultimo_editor_nome: nome })
+    .eq('id', d.id);
+
+  if (error){ alert('Não foi possível salvar: ' + error.message); return; }
+  fecharPop();
+  carregarDados();
+}
+
+pop.addEventListener("click", e => {
+  if (!ctx) return;
+  if (e.target.closest("#p-save")) return salvar();
+  if (e.target.closest("#p-cancel")) return fecharPop();
+  const b = e.target.closest("#p-seg button");
+  if (b){
+    ctx.boolVal = b.dataset.v === "1";
+    [...b.parentNode.children].forEach(x => x.className = (x===b) ? (ctx.boolVal?"sel yes":"sel") : "");
+  }
+});
+popBack.addEventListener("mousedown", fecharPop);
+
+$("tbody").addEventListener("click", e => {
+  const hist = e.target.closest("td.audit");
+  if (hist) return abrirHistorico(+hist.dataset.hist);
+  const td = e.target.closest("td.editable");
+  if (!td) return;
+  const d = linhas.find(x => x.id === +td.dataset.id);
+  abrirPop(td, d, COL[td.dataset.key]);
+});
+
+/* =========================================================
+   HISTÓRICO
+   ========================================================= */
+async function abrirHistorico(id){
+  const d = linhas.find(x => x.id === id);
+  $("modal-title").textContent = "Histórico — " + (d ? d.nome_cliente_indicado : "");
+  $("modal-body").innerHTML = "Carregando…";
+  $("overlay").classList.add("on");
+  const { data } = await sb.from('indicacoes_historico').select('*').eq('indicacao_id', id).order('criado_em', { ascending:false });
+  if (!data || !data.length){ $("modal-body").innerHTML = '<div class="empty">Nenhuma edição registrada ainda.</div>'; return; }
+  $("modal-body").innerHTML = data.map(l => `
+    <div class="act">
+      <span class="a-when">${new Date(l.criado_em).toLocaleString("pt-BR")}</span>
+      <span class="a-who">${esc(l.usuario_nome || "gestora")}</span>
+      — ${esc(COL[l.campo] ? COL[l.campo].label : l.campo)}:
+      ${esc(l.valor_anterior || "vazio")} → ${esc(l.valor_novo || "vazio")}
+    </div>`).join("");
+}
+$("modal-x").onclick = () => $("overlay").classList.remove("on");
+
+/* =========================================================
+   EVENTOS GERAIS
+   ========================================================= */
+["f-busca","f-vendedor","f-venda","f-recompensa"].forEach(id => {
+  $(id).addEventListener("input", render);
+});
+$("refresh").onclick = carregarDados;
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+(async function start(){
+  await carregarSessao();
+  await atualizarSessionBox();
+  await carregarDados();
+})();
+</script>
+</body>
+</html>
