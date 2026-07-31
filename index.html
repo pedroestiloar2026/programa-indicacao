@@ -62,6 +62,9 @@
   .bar-yes{display:inline-block;width:44px;height:8px;border-radius:99px;background:var(--green);vertical-align:middle}
   .bar-no{display:inline-block;width:44px;height:8px;border-radius:99px;background:#c0392b;vertical-align:middle}
   .upper{text-transform:uppercase}
+  tbody tr.pendente-resgate{box-shadow:inset 4px 0 0 #d97706}
+  .kpi.alerta{border-color:#d97706;background:#fff8ec}
+  .kpi.alerta .v{color:#b45309}
   .blank{color:#c8c8c8}
   td.audit{color:var(--ink-4);font-size:11px;min-width:150px;border-left:1px solid var(--line);cursor:pointer;vertical-align:middle}
   td.audit:hover{color:var(--ink-3);text-decoration:underline}
@@ -126,12 +129,25 @@
         <label for="f-recompensa">Recompensa liberada?</label>
         <select id="f-recompensa"><option value="">Todos</option><option value="sim">Sim</option><option value="nao">Não</option></select>
       </div>
+      <div class="field">
+        <label for="f-situacao">Situação do resgate</label>
+        <select id="f-situacao">
+          <option value="">Todas</option>
+          <option value="sem_venda">Sem venda</option>
+          <option value="sem_recompensa">Venda sem recompensa liberada</option>
+          <option value="pendente_resgate">Recompensa liberada, aguardando resgate</option>
+          <option value="resgatado">Já resgatado</option>
+        </select>
+      </div>
     </div>
   </section>
 
   <div class="bar">
     <div class="count" id="count"></div>
-    <button type="button" id="refresh">↻ Atualizar</button>
+    <div style="display:flex;gap:8px">
+      <button type="button" id="btn-saldos">💰 Saldo dos indicadores</button>
+      <button type="button" id="refresh">↻ Atualizar</button>
+    </div>
   </div>
 
   <div class="table-scroll">
@@ -179,6 +195,7 @@ const norm = s => (s||"").toString().toLowerCase().normalize("NFD").replace(/[\u
 const COLS = [
   {key:"data_indicacao",        label:"Data de indicação",        type:"date"},
   {key:"nome_cliente_indicado", label:"Cliente indicador",        type:"text", cls:"name upper"},
+  {key:"codigo_indicador",      label:"Código do Indicador",      type:"text", editRole:"vendedor"},
   {key:"telefone",              label:"Telefone",                 type:"phone"},
   {key:"email",                 label:"E-mail",                   type:"text"},
   {key:"nome_indicacao",        label:"Nome da indicação",        type:"text", cls:"upper"},
@@ -308,6 +325,14 @@ function popularVendedores(){
   if (nomes.includes(atual)) sel.value = atual;
 }
 
+/* classifica a situação de resgate de cada indicação, usada no filtro, no KPI e no destaque visual */
+function situacaoResgate(d){
+  if (d.gerou_venda !== true) return "sem_venda";
+  if (d.recompensa_liberada !== true) return "sem_recompensa";
+  if (!d.data_resgate) return "pendente_resgate";
+  return "resgatado";
+}
+
 /* =========================================================
    FILTROS
    ========================================================= */
@@ -316,6 +341,7 @@ function filtrar(){
   const vendedor = $("f-vendedor").value;
   const venda = $("f-venda").value;
   const recompensa = $("f-recompensa").value;
+  const situacao = $("f-situacao").value;
 
   return linhas.filter(d => {
     if (busca){
@@ -325,6 +351,7 @@ function filtrar(){
     if (vendedor && d.vendedor !== vendedor) return false;
     if (venda && (venda === "sim") !== !!d.gerou_venda) return false;
     if (recompensa && (recompensa === "sim") !== !!d.recompensa_liberada) return false;
+    if (situacao && situacaoResgate(d) !== situacao) return false;
     return true;
   });
 }
@@ -359,7 +386,8 @@ function render(){
       return `<td class="${cls}" data-id="${d.id}" data-key="${c.key}">${valorHTML(d,c)}
         ${d.ultimo_editor_nome && c.editRole ? `<span class="cstamp">${esc(d.ultimo_editor_nome)}</span>` : ""}</td>`;
     }).join("");
-    return `<tr>${tds}<td class="audit" data-hist="${d.id}">ver histórico</td></tr>`;
+    const trCls = situacaoResgate(d) === "pendente_resgate" ? " class=\"pendente-resgate\"" : "";
+    return `<tr${trCls}>${tds}<td class="audit" data-hist="${d.id}">ver histórico</td></tr>`;
   }).join("");
 
   $("empty").style.display = rows.length ? "none" : "block";
@@ -367,15 +395,17 @@ function render(){
   const fatTotal = rows.reduce((s,d) => s + (Number(d.faturamento_gerado)||0), 0);
   const vendas = rows.filter(d => d.gerou_venda).length;
   const recs = rows.filter(d => d.recompensa_liberada).length;
+  const pendentes = rows.filter(d => situacaoResgate(d) === "pendente_resgate").length;
 
   $("count").innerHTML = `<b>${rows.length}</b> ${rows.length===1?"indicação":"indicações"}`;
   $("kpis").innerHTML = [
-    ["Indicações", rows.length],
-    ["Vendas geradas", vendas],
-    ["Faturamento gerado", brl(fatTotal)],
-    ["Recompensas liberadas", recs],
-    ["Taxa de conversão", (rows.length ? (vendas/rows.length*100).toFixed(1) : "0.0")+"%"]
-  ].map(([k,v]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+    ["Indicações", rows.length, false],
+    ["Vendas geradas", vendas, false],
+    ["Faturamento gerado", brl(fatTotal), false],
+    ["Recompensas liberadas", recs, false],
+    ["Aguardando resgate", pendentes, pendentes > 0],
+    ["Taxa de conversão", (rows.length ? (vendas/rows.length*100).toFixed(1) : "0.0")+"%", false]
+  ].map(([k,v,alerta]) => `<div class="kpi${alerta?" alerta":""}"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
 }
 
 /* =========================================================
@@ -498,9 +528,52 @@ async function abrirHistorico(id){
 $("modal-x").onclick = () => $("overlay").classList.remove("on");
 
 /* =========================================================
+   SALDO POR INDICADOR — R$400 por venda gerada, menos o já resgatado
+   ========================================================= */
+const VALOR_POR_VENDA = 400;
+
+function calcularSaldos(){
+  const mapa = {};
+  linhas.forEach(d => {
+    const cod = (d.codigo_indicador || "").trim() || "(sem código)";
+    if (!mapa[cod]) mapa[cod] = { codigo: cod, nome: d.nome_cliente_indicado, telefone: d.telefone, vendas: 0, resgatadas: 0 };
+    if (d.gerou_venda === true) mapa[cod].vendas++;
+    if (d.gerou_venda === true && d.data_resgate) mapa[cod].resgatadas++;
+  });
+  return Object.values(mapa)
+    .map(x => ({ ...x, ganho: x.vendas*VALOR_POR_VENDA, resgatado: x.resgatadas*VALOR_POR_VENDA, saldo: (x.vendas-x.resgatadas)*VALOR_POR_VENDA }))
+    .sort((a,b) => b.saldo - a.saldo);
+}
+
+function abrirSaldos(){
+  $("modal-title").textContent = "Saldo dos indicadores";
+  $("overlay").classList.add("on");
+  const saldos = calcularSaldos();
+  if (!saldos.length){ $("modal-body").innerHTML = '<div class="empty">Nenhum indicador com venda registrada ainda.</div>'; return; }
+  $("modal-body").innerHTML = `
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <thead><tr style="text-align:left;color:var(--ink-3);font-size:10.5px;text-transform:uppercase">
+        <th style="padding:6px 8px 6px 0">Código</th><th>Indicador</th><th>Vendas</th><th>Ganho</th><th>Resgatado</th><th style="text-align:right">Saldo</th>
+      </tr></thead>
+      <tbody>
+        ${saldos.map(s => `
+          <tr style="border-top:1px solid var(--line)">
+            <td style="padding:7px 8px 7px 0">${esc(s.codigo)}</td>
+            <td>${esc((s.nome||"").toUpperCase())}<br><span style="color:var(--ink-4);font-size:10.5px">${esc(formatarTelefone(s.telefone))}</span></td>
+            <td>${s.vendas}</td>
+            <td>${brl(s.ganho)}</td>
+            <td>${brl(s.resgatado)}</td>
+            <td style="text-align:right;font-weight:600;${s.saldo>0?"color:#b45309":""}">${brl(s.saldo)}</td>
+          </tr>`).join("")}
+      </tbody>
+    </table>`;
+}
+$("btn-saldos").onclick = abrirSaldos;
+
+/* =========================================================
    EVENTOS GERAIS
    ========================================================= */
-["f-busca","f-vendedor","f-venda","f-recompensa"].forEach(id => {
+["f-busca","f-vendedor","f-venda","f-recompensa","f-situacao"].forEach(id => {
   $(id).addEventListener("input", render);
 });
 $("refresh").onclick = carregarDados;
