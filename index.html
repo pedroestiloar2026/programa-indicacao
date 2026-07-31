@@ -111,7 +111,7 @@
     <div class="grid">
       <div class="field">
         <label for="f-busca">Busca geral</label>
-        <input type="text" id="f-busca" placeholder="Nome, telefone, e-mail…">
+        <input type="text" id="f-busca" placeholder="Nome, telefone, e-mail…" autocomplete="off">
       </div>
       <div class="field">
         <label for="f-vendedor">Vendedor</label>
@@ -374,7 +374,7 @@ function abrirPop(td, d, c){
     <h3>${esc(c.label)}</h3>
     <div class="grp"><label class="lbl">Novo valor <span class="req">*</span></label>${controle}<div class="err" id="p-err-val"></div></div>
     <div class="grp"><label class="lbl">Seu nome <span class="req">*</span></label>
-      <input type="text" id="p-nome" placeholder="Quem está editando"><div class="err" id="p-err">Informe seu nome.</div></div>
+      <input type="text" id="p-nome" placeholder="Quem está editando" autocomplete="off"><div class="err" id="p-err">Informe seu nome.</div></div>
     <div class="pop-actions"><button type="button" id="p-cancel">Cancelar</button><button type="button" id="p-save" class="btn-primary">Salvar</button></div>`;
   popBack.classList.add("on"); pop.classList.add("on");
 
