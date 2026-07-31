@@ -50,15 +50,14 @@
   thead th.ed{background:#fbfbfb}
   thead th.ed::before{content:"✎ ";font-size:9px;color:var(--ink-4)}
   tbody td{padding:8px 12px;border-bottom:1px solid var(--line);color:var(--ink-2);vertical-align:top;position:relative}
-  tbody tr:nth-child(even){background:#fcfcfc}
-  tbody tr:hover{background:#f4f4f4}
+  tbody tr:hover{background:#e2e8ee}
   td.name{color:var(--ink);font-weight:500}
   td.num{text-align:right;font-variant-numeric:tabular-nums}
   td.obs{white-space:normal;min-width:220px;max-width:280px;font-size:11.5px;color:var(--ink-3)}
-  tbody td:not(.editable){background:#f1f1f1}
-  tbody tr:nth-child(even) td:not(.editable){background:#ededed}
-  td.editable{cursor:pointer;background:#fff}
-  td.editable:hover{background:#f6f6f6}
+  tbody tr:nth-child(odd) td:not(.editable){background:#ffffff}
+  tbody tr:nth-child(even) td:not(.editable){background:#eef1f5}
+  td.editable{cursor:pointer;background:#eef6ff}
+  td.editable:hover{background:#dfeeff}
   td.locked{cursor:not-allowed;opacity:.55}
   .bar-yes{display:inline-block;width:44px;height:8px;border-radius:99px;background:var(--green);vertical-align:middle}
   .blank{color:#c8c8c8}
@@ -178,10 +177,11 @@ const norm = s => (s||"").toString().toLowerCase().normalize("NFD").replace(/[\u
 const COLS = [
   {key:"data_indicacao",        label:"Data de indicação",        type:"date"},
   {key:"nome_cliente_indicado", label:"Cliente indicador",        type:"text", cls:"name"},
-  {key:"telefone",              label:"Telefone",                 type:"text"},
+  {key:"telefone",              label:"Telefone",                 type:"phone"},
   {key:"email",                 label:"E-mail",                   type:"text"},
   {key:"nome_indicacao",        label:"Nome da indicação",        type:"text"},
-  {key:"telefone_indicacao",    label:"Telefone da indicação",    type:"text"},
+  {key:"telefone_indicacao",    label:"Telefone da indicação",    type:"phone"},
+  {key:"numero_nota_fiscal",    label:"N° Nota Fiscal",           type:"text",  editRole:"vendedor"},
   {key:"vendedor",              label:"Vendedor",                 type:"text"},
   {key:"gerou_venda",           label:"Gerou venda?",             type:"bool",  editRole:"vendedor"},
   {key:"faturamento_gerado",    label:"Faturamento gerado",       type:"money", editRole:"vendedor", cls:"num"},
@@ -193,6 +193,17 @@ const COLS = [
   {key:"apuracao",              label:"Apuração",                 type:"date",  editRole:"gestora"}
 ];
 const COL = Object.fromEntries(COLS.map(c => [c.key, c]));
+
+/* formata telefone só visualmente — o dado salvo no banco não é alterado */
+function formatarTelefone(v){
+  if (!v) return v;
+  const d = String(v).replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  if (d.length === 9)  return `${d.slice(0,5)}-${d.slice(5)}`;
+  if (d.length === 8)  return `${d.slice(0,4)}-${d.slice(4)}`;
+  return v; // não bate com nenhum padrão conhecido — mostra como veio, sem forçar
+}
 
 let linhas = [];
 let sessao = null; // { user, papel, nome }
@@ -324,6 +335,7 @@ function valorHTML(d, c){
   if (c.type === "bool")  return v ? '<span class="bar-yes" title="Sim"></span>' : '<span class="blank">—</span>';
   if (c.type === "money") return (v || v === 0) ? brl(v) : '<span class="blank">—</span>';
   if (c.type === "date")  return v ? dt(v) : '<span class="blank">—</span>';
+  if (c.type === "phone") return v ? esc(formatarTelefone(v)) : '<span class="blank">—</span>';
   return v ? esc(v) : '<span class="blank">—</span>';
 }
 
@@ -378,8 +390,10 @@ function abrirPop(td, d, c){
     controle = '<input type="text" id="p-val" placeholder="0,00" inputmode="numeric">';
   } else if (c.type === "date"){
     controle = '<input type="date" id="p-val">';
-  } else {
+  } else if (c.type === "textarea"){
     controle = '<textarea id="p-val" placeholder="Escreva…"></textarea>';
+  } else {
+    controle = '<input type="text" id="p-val" placeholder="Escreva…">';
   }
   pop.innerHTML = `
     <h3>${esc(c.label)}</h3>
