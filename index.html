@@ -156,28 +156,7 @@
   </div>
 </div>
 
-<div class="overlay" id="login-overlay">
-  <div class="modal" style="max-width:340px">
-    <div class="modal-h">
-      <div class="mt">Login de gestora</div>
-      <button class="modal-x" id="login-x" type="button">×</button>
-    </div>
-    <div class="modal-b">
-      <div class="field" style="margin-bottom:10px">
-        <label>E-mail</label>
-        <input type="email" id="login-email">
-      </div>
-      <div class="field" style="margin-bottom:10px">
-        <label>Senha</label>
-        <input type="password" id="login-senha">
-      </div>
-      <div class="err" id="login-err">E-mail ou senha incorretos.</div>
-      <div class="pop-actions" style="border:none;padding-top:14px">
-        <button type="button" class="btn-primary" id="login-entrar">Entrar</button>
-      </div>
-    </div>
-  </div>
-</div>
+
 
 <script>
 /* =========================================================
@@ -238,7 +217,7 @@ async function atualizarSessionBox(){
   } else {
     box.innerHTML = `<span class="badge vendedor">Acesso vendedor</span>
       <button type="button" id="btn-login">Login de gestora</button>`;
-    $("btn-login").onclick = () => $("login-overlay").classList.add("on");
+    $("btn-login").onclick = abrirLoginModal;
   }
 }
 
@@ -249,19 +228,51 @@ async function carregarSessao(){
   sessao = perfil ? { user: session.user, papel: perfil.papel, nome: perfil.nome } : null;
 }
 
-$("login-entrar").onclick = async () => {
-  const email = $("login-email").value.trim();
-  const senha = $("login-senha").value;
-  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
-  if (error){ $("login-err").classList.add("on"); return; }
-  $("login-err").classList.remove("on");
-  $("login-overlay").classList.remove("on");
-  $("login-email").value = ""; $("login-senha").value = "";
-  await carregarSessao();
-  await atualizarSessionBox();
-  render();
-};
-$("login-x").onclick = () => $("login-overlay").classList.remove("on");
+function abrirLoginModal(){
+  if ($("login-overlay")) return; // já está aberto
+  const div = document.createElement("div");
+  div.className = "overlay on";
+  div.id = "login-overlay";
+  div.innerHTML = `
+    <div class="modal" style="max-width:340px">
+      <div class="modal-h">
+        <div class="mt">Login de gestora</div>
+        <button class="modal-x" id="login-x" type="button">×</button>
+      </div>
+      <div class="modal-b">
+        <div class="field" style="margin-bottom:10px">
+          <label>E-mail</label>
+          <input type="text" id="login-email" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </div>
+        <div class="field" style="margin-bottom:10px">
+          <label>Senha</label>
+          <input type="password" id="login-senha" autocomplete="new-password">
+        </div>
+        <div class="err" id="login-err">E-mail ou senha incorretos.</div>
+        <div class="pop-actions" style="border:none;padding-top:14px">
+          <button type="button" class="btn-primary" id="login-entrar">Entrar</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+
+  $("login-x").onclick = fecharLoginModal;
+  $("login-entrar").onclick = async () => {
+    const email = $("login-email").value.trim();
+    const senha = $("login-senha").value;
+    const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+    if (error){ $("login-err").classList.add("on"); return; }
+    fecharLoginModal();
+    await carregarSessao();
+    await atualizarSessionBox();
+    render();
+  };
+}
+
+function fecharLoginModal(){
+  const el = $("login-overlay");
+  if (el) el.remove(); // remove do DOM de vez — não deixa rastro pro navegador associar autofill
+}
 
 /* =========================================================
    CARREGAR DADOS
