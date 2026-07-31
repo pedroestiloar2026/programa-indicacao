@@ -60,6 +60,8 @@
   td.editable:hover{background:#dfeeff}
   td.locked{cursor:not-allowed;opacity:.55}
   .bar-yes{display:inline-block;width:44px;height:8px;border-radius:99px;background:var(--green);vertical-align:middle}
+  .bar-no{display:inline-block;width:44px;height:8px;border-radius:99px;background:#c0392b;vertical-align:middle}
+  .upper{text-transform:uppercase}
   .blank{color:#c8c8c8}
   td.audit{color:var(--ink-4);font-size:11px;min-width:150px;border-left:1px solid var(--line);cursor:pointer;vertical-align:middle}
   td.audit:hover{color:var(--ink-3);text-decoration:underline}
@@ -176,13 +178,13 @@ const norm = s => (s||"").toString().toLowerCase().normalize("NFD").replace(/[\u
    ========================================================= */
 const COLS = [
   {key:"data_indicacao",        label:"Data de indicação",        type:"date"},
-  {key:"nome_cliente_indicado", label:"Cliente indicador",        type:"text", cls:"name"},
+  {key:"nome_cliente_indicado", label:"Cliente indicador",        type:"text", cls:"name upper"},
   {key:"telefone",              label:"Telefone",                 type:"phone"},
   {key:"email",                 label:"E-mail",                   type:"text"},
-  {key:"nome_indicacao",        label:"Nome da indicação",        type:"text"},
+  {key:"nome_indicacao",        label:"Nome da indicação",        type:"text", cls:"upper"},
   {key:"telefone_indicacao",    label:"Telefone da indicação",    type:"phone"},
   {key:"numero_nota_fiscal",    label:"N° Nota Fiscal",           type:"text",  editRole:"vendedor"},
-  {key:"vendedor",              label:"Vendedor",                 type:"text"},
+  {key:"vendedor",              label:"Vendedor",                 type:"text", cls:"upper"},
   {key:"gerou_venda",           label:"Gerou venda?",             type:"bool",  editRole:"vendedor"},
   {key:"faturamento_gerado",    label:"Faturamento gerado",       type:"money", editRole:"vendedor", cls:"num"},
   {key:"recompensa_liberada",   label:"Recompensa liberada?",     type:"bool",  editRole:"gestora"},
@@ -332,7 +334,11 @@ function filtrar(){
    ========================================================= */
 function valorHTML(d, c){
   const v = d[c.key];
-  if (c.type === "bool")  return v ? '<span class="bar-yes" title="Sim"></span>' : '<span class="blank">—</span>';
+  if (c.type === "bool"){
+    if (v === true)  return '<span class="bar-yes" title="Sim"></span>';
+    if (v === false) return '<span class="bar-no" title="Não"></span>';
+    return '<span class="blank">—</span>';
+  }
   if (c.type === "money") return (v || v === 0) ? brl(v) : '<span class="blank">—</span>';
   if (c.type === "date")  return v ? dt(v) : '<span class="blank">—</span>';
   if (c.type === "phone") return v ? esc(formatarTelefone(v)) : '<span class="blank">—</span>';
