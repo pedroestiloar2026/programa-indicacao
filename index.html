@@ -68,7 +68,7 @@
   .pop-back{position:fixed;inset:0;z-index:55;display:none;background:rgba(17,17,17,.06)}
   .pop-back.on{display:block}
   .pop{position:fixed;z-index:60;width:300px;display:none;background:#fff;border:1px solid var(--ink);
-    border-radius:var(--radius);box-shadow:0 12px 34px rgba(0,0,0,.17);padding:14px}
+    border-radius:var(--radius);box-shadow:0 12px 34px rgba(0,0,0,.17);padding:14px;max-height:calc(100vh - 20px);overflow:auto}
   .pop.on{display:block}
   .pop h3{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em}
   .pop .grp{margin-top:12px}
@@ -377,9 +377,25 @@ function abrirPop(td, d, c){
       <input type="text" id="p-nome" placeholder="Quem está editando"><div class="err" id="p-err">Informe seu nome.</div></div>
     <div class="pop-actions"><button type="button" id="p-cancel">Cancelar</button><button type="button" id="p-save" class="btn-primary">Salvar</button></div>`;
   popBack.classList.add("on"); pop.classList.add("on");
+
+  // posiciona o popup, garantindo que ele nunca fique cortado pela borda da tela
   const r = td.getBoundingClientRect();
-  pop.style.left = Math.min(r.left, window.innerWidth-312) + "px";
-  pop.style.top = (r.bottom+6) + "px";
+  const alturaPop = pop.offsetHeight;
+  const larguraPop = pop.offsetWidth;
+
+  let top = r.bottom + 6;
+  if (top + alturaPop > window.innerHeight - 10){
+    // não cabe embaixo — abre para cima da célula
+    top = Math.max(10, r.top - alturaPop - 6);
+  }
+  let left = r.left;
+  if (left + larguraPop > window.innerWidth - 10){
+    left = window.innerWidth - larguraPop - 10;
+  }
+  left = Math.max(10, left);
+
+  pop.style.left = left + "px";
+  pop.style.top = top + "px";
 }
 
 async function salvar(){
