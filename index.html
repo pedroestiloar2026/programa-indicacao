@@ -205,11 +205,8 @@ const COLS = [
   {key:"gerou_venda",           label:"Gerou venda?",             type:"bool",  editRole:"vendedor"},
   {key:"faturamento_gerado",    label:"Faturamento gerado",       type:"money", editRole:"vendedor", cls:"num"},
   {key:"recompensa_liberada",   label:"Recompensa liberada?",     type:"bool",  editRole:"gestora"},
-  {key:"contato_realizado",     label:"Contato realizado?",       type:"bool",  editRole:"gestora"},
-  {key:"data_resgate",          label:"Data do resgate",          type:"date",  editRole:"gestora"},
-  {key:"observacao",            label:"Observação",               type:"textarea", editRole:"gestora", cls:"obs"},
-  {key:"semestre",              label:"Semestre",                 type:"text",  editRole:"gestora"},
-  {key:"apuracao",              label:"Apuração",                 type:"date",  editRole:"gestora"}
+  {key:"data_resgate",          label:"Resgate",                  type:"boolDate", editRole:"gestora"},
+  {key:"observacao",            label:"Observação",               type:"textarea", editRole:"gestora", cls:"obs"}
 ];
 const COL = Object.fromEntries(COLS.map(c => [c.key, c]));
 
@@ -366,6 +363,9 @@ function valorHTML(d, c){
     if (v === false) return '<span class="bar-no" title="Não"></span>';
     return '<span class="blank">—</span>';
   }
+  if (c.type === "boolDate"){
+    return v ? `<span class="bar-yes" title="Sim"></span><span class="cstamp">${dt(v)}</span>` : '<span class="blank">—</span>';
+  }
   if (c.type === "money") return (v || v === 0) ? brl(v) : '<span class="blank">—</span>';
   if (c.type === "date")  return v ? dt(v) : '<span class="blank">—</span>';
   if (c.type === "phone") return v ? esc(formatarTelefone(v)) : '<span class="blank">—</span>';
@@ -420,7 +420,7 @@ function abrirPop(td, d, c){
   fecharPop();
   ctx = { d, c, boolVal: null };
   let controle;
-  if (c.type === "bool"){
+  if (c.type === "bool" || c.type === "boolDate"){
     controle = `<div class="seg" id="p-seg"><button type="button" data-v="1">Sim</button><button type="button" data-v="0">Não</button></div>`;
   } else if (c.type === "money"){
     controle = '<input type="text" id="p-val" placeholder="0,00" inputmode="numeric">';
@@ -466,6 +466,9 @@ async function salvar(){
   if (c.type === "bool"){
     if (ctx.boolVal === null){ $("p-err-val").textContent="Escolha Sim ou Não."; $("p-err-val").classList.add("on"); return; }
     novo = ctx.boolVal;
+  } else if (c.type === "boolDate"){
+    if (ctx.boolVal === null){ $("p-err-val").textContent="Escolha Sim ou Não."; $("p-err-val").classList.add("on"); return; }
+    novo = ctx.boolVal ? new Date().toISOString().slice(0,10) : null; // grava a data de hoje sozinho, ou limpa se Não
   } else if (c.type === "money"){
     const n = parseFloat($("p-val").value.replace(/\./g,"").replace(",", "."));
     if (isNaN(n)){ $("p-err-val").textContent="Informe o valor."; $("p-err-val").classList.add("on"); return; }
